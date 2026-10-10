@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Store 地区切换助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- 头部 -->
+    <header class="popup-header">
+      <div class="header-brand">
+        <div class="brand-icon"></div>
+        <div class="brand-info">
+          <h1 class="brand-title">App Store 跨区助手</h1>
+          <span class="brand-tag">打开苹果官网 · 只改这个网站</span>
+        </div>
+      </div>
+      <div class="header-version">v3.1</div>
+    </header>
+
+    <!-- 方案一：跨区实时搜索与直达 (免任何配置) -->
+    <section class="card search-card">
+      <div class="card-header">
+        <span class="card-icon">🔍</span>
+        <span class="card-title">在苹果官网搜索</span>
+      </div>
+      <div class="card-body">
+        <div class="search-input-group">
+          <select id="searchRegionSelect" class="form-select search-region-select" title="选择目标国家"></select>
+          <input type="text" id="searchAppInput" class="form-input" placeholder="输入名称或ID (如: ChatGPT, TikTok)..." />
+          <button id="searchAppBtn" class="btn btn-primary">搜索</button>
+        </div>
+        <div class="search-loading hidden" id="searchLoading">正在检索 App Store...</div>
+        <div class="search-results hidden" id="searchResults"></div>
+      </div>
+    </section>
+
+    <!-- 方案二：针对当前页面的快捷查看 -->
+    <section class="card current-tab-card" id="currentTabCard">
+      <div class="card-header">
+        <span class="card-icon">🎯</span>
+        <span class="card-title">当前页面</span>
+        <span class="badge" id="currentRegionBadge">检测中...</span>
+      </div>
+      <div class="card-body" id="currentTabBody">
+        <div class="tab-info" id="tabInfo">正在检测当前网页...</div>
+        <div class="quick-switch-section">
+          <div class="section-title">把当前这个苹果官网页面切到所选地区：</div>
+          <div class="chips-container" id="popupQuickChips"></div>
+          <div class="dropdown-row">
+            <select id="popupAllRegionsSelect" class="form-select">
+              <option value="">更多地区...</option>
+            </select>
+            <button id="popupSwitchTabBtn" class="btn btn-primary btn-sm">查看该区</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 方案三：原生地址栏防 302 解决方案 (两种任选) -->
+    <section class="card settings-card">
+      <div class="card-header">
+        <span class="card-icon">⚡</span>
+        <span class="card-title">原生网页防 302 拦截方案</span>
+      </div>
+      <div class="card-body">
+        <!-- 方式 A: PAC 智能分流代理 -->
+        <div class="setting-item">
+          <div class="setting-text">
+            <div class="setting-name">打开真实 App Store 网站</div>
+            <div class="setting-desc">只让 apps.apple.com 走海外官网节点，其它网站仍直连</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="proxyRoutingToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="proxy-port-row hidden" id="proxyPortRow">
+          <span style="font-size:11px;color:var(--text-secondary);">本地端口: 127.0.0.1:</span>
+          <input type="number" id="proxyPortInput" class="form-input" style="width:70px;padding:3px 6px;" value="17890" />
+          <button id="saveProxyPortBtn" class="btn btn-sm" style="background:#eee;padding:3px 8px;">保存</button>
+        </div>
+
+        <!-- 方式 B: 一键直连 Hosts -->
+        <div class="hosts-box">
+          <div class="hosts-title">不用代理时，把域名指到海外官网节点：</div>
+          <div class="hosts-code-row">
+            <code>sudo sh -c 'echo "151.101.3.6 apps.apple.com" >> /etc/hosts'</code>
+            <button id="copyHostsCmdBtn" class="btn btn-sm btn-primary">复制命令</button>
+          </div>
+          <div class="hosts-desc">原理：将 Apple 请求发往海外直连 Akamai 节点，CDN 不再 302。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 快捷入口 -->
+    <footer class="popup-footer">
+      <button class="footer-btn" id="openExploreCenterBtn">🇺🇸 打开美区官网</button>
+      <button class="footer-btn" id="openChartsBtn">📊 打开该国排行榜</button>
+    </footer>
+  </div>
+
+  <script src="regions.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

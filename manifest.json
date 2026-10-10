@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "App Store 网页版地区切换助手",
+  "short_name": "AppStoreRegion",
+  "version": "3.1.0",
+  "description": "在浏览器里打开真正的 apps.apple.com，并切换美区、日区、港区等商店。只改这个网站的线路，不改电脑 IP。",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "App Store 地区切换",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "tabs",
+    "proxy"
+  ],
+  "host_permissions": [
+    "*://apps.apple.com/*",
+    "https://itunes.apple.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://apps.apple.com/*"
+      ],
+      "js": [
+        "regions.js",
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.css",
+        "icons/*"
+      ],
+      "matches": [
+        "*://apps.apple.com/*"
+      ]
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+A",
+        "mac": "Alt+Shift+A"
+      },
+      "description": "呼出 App Store 地区切换面板"
+    }
+  }
+}
