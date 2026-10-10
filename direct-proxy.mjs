@@ -1,7 +1,7 @@
 /**
  * 只转发 apps.apple.com。
- * 连到公共 DNS 给出的海外节点，绕开国内 CDN 对非 /cn 页面的 302。
- * 监听 127.0.0.1，不改系统全局代理。
+ * 启动：node direct-proxy.mjs
+ * 监听 127.0.0.1:17890，不改系统全局代理。
  */
 import http from 'node:http';
 import net from 'node:net';
