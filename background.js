@@ -33,20 +33,38 @@ function applyDirectProxy(enabled) {
   });
 }
 
-function syncProxySetting() {
-  chrome.storage.sync.get(['directProxyVersion', 'proxyRoutingEnabled'], (res) => {
-    const fresh = res.directProxyVersion == null;
-    const enabled = fresh ? false : res.proxyRoutingEnabled === true;
-    if (res.directProxyVersion !== 4) {
+const LINK_ALARM = 'asr-link';
+
+function forwarderReady() {
+  return fetch(`http://127.0.0.1:${DIRECT_PORT}/health`, { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => !!(data && data.ok))
+    .catch(() => false);
+}
+
+function syncLink(nextMode) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['directProxyVersion', 'proxyRoutingEnabled', 'linkMode'], async (res) => {
+      let mode = nextMode || res.linkMode;
+      if (!mode) {
+        mode = res.directProxyVersion != null && res.proxyRoutingEnabled === false ? 'off' : 'auto';
+      }
+      const ready = await forwarderReady();
+      const enabled = mode !== 'off' && ready;
+      applyDirectProxy(enabled);
       chrome.storage.sync.set({
-        directProxyVersion: 4,
+        directProxyVersion: 5,
+        linkMode: mode,
         proxyRoutingEnabled: enabled,
         proxyPort: DIRECT_PORT
-      }, () => applyDirectProxy(enabled));
-      return;
-    }
-    applyDirectProxy(enabled);
+      }, () => resolve({ enabled, ready, linkMode: mode, port: DIRECT_PORT }));
+    });
   });
+}
+
+function scheduleLinkCheck() {
+  if (!chrome.alarms) return;
+  chrome.alarms.create(LINK_ALARM, { periodInMinutes: 1 });
 }
 
 function setupContextMenus() {
@@ -76,42 +94,33 @@ function regionUrl(linkUrl, code) {
 
 chrome.runtime.onInstalled.addListener(() => {
   setupContextMenus();
-  syncProxySetting();
+  scheduleLinkCheck();
+  syncLink();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   setupContextMenus();
-  syncProxySetting();
+  scheduleLinkCheck();
+  syncLink();
 });
 
-syncProxySetting();
+if (chrome.alarms) {
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === LINK_ALARM) syncLink();
+  });
+}
+
+scheduleLinkCheck();
+syncLink();
 setupContextMenus();
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.proxyRoutingEnabled) {
-    applyDirectProxy(changes.proxyRoutingEnabled.newValue === true);
-  }
-});
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'GET_PROXY_STATUS') {
-    chrome.storage.sync.get(['proxyRoutingEnabled'], (res) => {
-      sendResponse({
-        enabled: res.proxyRoutingEnabled === true,
-        port: DIRECT_PORT
-      });
-    });
+    syncLink().then(sendResponse);
     return true;
   }
   if (request.action === 'SET_PROXY_STATUS') {
-    chrome.storage.sync.set({
-      directProxyVersion: 4,
-      proxyRoutingEnabled: !!request.enabled,
-      proxyPort: DIRECT_PORT
-    }, () => {
-      applyDirectProxy(!!request.enabled);
-      sendResponse({ success: true });
-    });
+    syncLink(request.enabled ? 'auto' : 'off').then(sendResponse);
     return true;
   }
   return false;

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "App Store 网页版地区切换助手",
   "short_name": "AppStoreRegion",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "在真实的 apps.apple.com 上切换商店地区。",
   "icons": {
     "16": "icons/icon16.png",
@@ -27,7 +27,8 @@
     "storage",
     "contextMenus",
     "tabs",
-    "proxy"
+    "proxy",
+    "alarms"
   ],
   "host_permissions": [
     "*://apps.apple.com/*",

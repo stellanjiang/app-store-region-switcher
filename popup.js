@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openTodayBtn = document.getElementById('openTodayBtn');
   const openChartsBtn = document.getElementById('openChartsBtn');
 
-  const HOSTS_COMMAND = `sudo sh -c 'grep -q "[[:space:]]apps.apple.com" /etc/hosts || echo "151.101.3.6 apps.apple.com" >> /etc/hosts'`;
+  const HOSTS_COMMAND = 'curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.sh | bash';
 
   let activeTab = null;
   let activeUrl = null;
@@ -197,19 +197,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function renderLink(enabled) {
     proxyRoutingToggle.checked = !!enabled;
+    document.getElementById('linkHelp').classList.toggle('hidden', forwarderReady);
     if (forwarderReady && enabled) {
-      linkStatus.textContent = '本机转发已连接。Chrome 只把 apps.apple.com 交给它，其它网站不变。';
+      linkStatus.textContent = '已在后台运行。打开官网即可切换地区，其它网站不变。';
       return;
     }
     if (forwarderReady) {
-      linkStatus.textContent = '本机转发已在运行。打开开关后，Chrome 会用它打开苹果官网。';
+      linkStatus.textContent = '后台程序已运行。打开开关后，Chrome 会用它打开苹果官网。';
       return;
     }
-    if (enabled) {
-      linkStatus.textContent = '开关开着，但 127.0.0.1:17890 没有响应。请先运行 node direct-proxy.mjs，或先关掉开关。';
-      return;
-    }
-    linkStatus.textContent = '直接打开官网即可。如果外区页面被送回中国区，再用下面的办法。';
+    linkStatus.textContent = '国外直接打开即可。中国大陆先运行下面这一条，开不开代理都可以。';
   }
 
   async function probeForwarder() {
@@ -223,28 +220,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  forwarderReady = await probeForwarder();
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
     chrome.runtime.sendMessage({ action: 'GET_PROXY_STATUS' }, (res) => {
+      forwarderReady = !!(res && res.ready);
       renderLink(!!(res && res.enabled));
     });
   } else {
+    forwarderReady = await probeForwarder();
     renderLink(false);
   }
 
-  proxyRoutingToggle.addEventListener('change', async () => {
-    if (proxyRoutingToggle.checked) {
-      forwarderReady = await probeForwarder();
-      if (!forwarderReady) {
-        proxyRoutingToggle.checked = false;
-        renderLink(false);
-        return;
-      }
+  proxyRoutingToggle.addEventListener('change', () => {
+    if (typeof chrome === 'undefined' || !chrome.runtime) {
+      proxyRoutingToggle.checked = false;
+      renderLink(false);
+      return;
     }
     chrome.runtime.sendMessage({
       action: 'SET_PROXY_STATUS',
       enabled: proxyRoutingToggle.checked
-    }, () => renderLink(proxyRoutingToggle.checked));
+    }, (res) => {
+      forwarderReady = !!(res && res.ready);
+      renderLink(!!(res && res.enabled));
+    });
   });
 
   copyHostsCmdBtn.addEventListener('click', () => {
