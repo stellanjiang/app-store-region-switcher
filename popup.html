@@ -16,7 +16,7 @@
           <span class="brand-tag">打开苹果官网，只改网址里的地区</span>
         </div>
       </div>
-      <div class="header-version">v3.3</div>
+      <div class="header-version">v3.3.1</div>
     </header>
 
     <section class="card">
@@ -55,12 +55,22 @@
         </label>
       </div>
       <div class="hosts-box" id="linkHelp">
-        <div class="hosts-title">中国大陆，开不开代理都用这一条：</div>
-        <div class="hosts-code-row">
-          <code>curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.sh | bash</code>
-          <button id="copyHostsCmdBtn" class="btn btn-sm btn-primary" type="button">复制命令</button>
+        <div class="hosts-title">每台电脑各运行一次</div>
+        <div class="device-cmd">
+          <div class="device-label" id="macCmdLabel">Mac</div>
+          <div class="hosts-code-row">
+            <code id="macCommand"></code>
+            <button id="copyMacCmdBtn" class="btn btn-sm btn-primary" type="button">复制</button>
+          </div>
         </div>
-        <div class="hosts-desc">登录后会自动启动，只处理 apps.apple.com。扩展检测到它就会接上。</div>
+        <div class="device-cmd">
+          <div class="device-label" id="winCmdLabel">Windows</div>
+          <div class="hosts-code-row">
+            <code id="winCommand"></code>
+            <button id="copyWinCmdBtn" class="btn btn-sm" type="button">复制</button>
+          </div>
+        </div>
+        <div class="hosts-desc">Mac 用上面的安装命令，登录后自动启动。Windows 不需要 Python，用系统自带的 PowerShell。两台电脑互不影响。</div>
       </div>
     </section>
 

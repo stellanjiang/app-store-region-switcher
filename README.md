@@ -12,7 +12,9 @@
 
 ### 中国大陆
 
-开着代理和没开代理用同一条命令。它会安装一个登录后自动启动的小程序，只处理 `apps.apple.com`，其它网站不变。扩展检测到它就会自动接上。
+Mac 和 Windows 都支持。每台电脑各自安装一次，开着代理和没开代理用同一条对应系统的命令。它只处理 `apps.apple.com`，其它网站不变。扩展在每台电脑上各自检测本机程序。
+
+#### Mac
 
 已克隆本仓库时，在仓库目录执行：
 
@@ -20,13 +22,11 @@
 ./install.sh
 ```
 
-还没有仓库时，在终端执行：
+还没有仓库时：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.sh | bash
 ```
-
-看到「已在后台运行」后，打开扩展，再切换地区。
 
 停止并取消登录自启：
 
@@ -34,7 +34,23 @@ curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switc
 bash install.sh --uninstall
 ```
 
-这条命令用于 macOS，使用系统自带的 Python。其它系统在本目录运行 `python3 direct-proxy.py`，并在扩展里打开「自动使用本机转发」。
+#### Windows
+
+不需要安装 Python，用系统自带的 PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.ps1 | iex"
+```
+
+如果 Windows 询问防火墙，允许专用网络即可。这个程序只监听本机 `127.0.0.1`。
+
+停止并取消登录自启：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:ASR_UNINSTALL='1'; irm https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.ps1 | iex"
+```
+
+看到「已在后台运行」后，在这台电脑上打开扩展，再切换地区。
 
 ## 安装扩展
 

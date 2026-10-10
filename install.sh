@@ -24,7 +24,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 fi
 
 if [[ "$(uname)" != "Darwin" ]]; then
-  echo "这条安装命令用于 macOS。其它系统在本目录运行：python3 direct-proxy.py"
+  echo "这条安装命令用于 macOS。Windows 不需要 Python，请运行 install.ps1。"
   exit 1
 fi
 

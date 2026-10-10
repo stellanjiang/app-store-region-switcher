@@ -44,20 +44,20 @@ function forwarderReady() {
 
 function syncLink(nextMode) {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['directProxyVersion', 'proxyRoutingEnabled', 'linkMode'], async (res) => {
-      let mode = nextMode || res.linkMode;
-      if (!mode) {
-        mode = res.directProxyVersion != null && res.proxyRoutingEnabled === false ? 'off' : 'auto';
-      }
+    chrome.storage.local.get(['linkMode'], async (res) => {
+      const mode = nextMode || res.linkMode || 'auto';
       const ready = await forwarderReady();
       const enabled = mode !== 'off' && ready;
       applyDirectProxy(enabled);
-      chrome.storage.sync.set({
+      chrome.storage.local.set({
         directProxyVersion: 5,
         linkMode: mode,
         proxyRoutingEnabled: enabled,
         proxyPort: DIRECT_PORT
-      }, () => resolve({ enabled, ready, linkMode: mode, port: DIRECT_PORT }));
+      }, () => {
+        chrome.storage.sync.remove(['proxyRoutingEnabled', 'linkMode', 'directProxyVersion', 'proxyPort']);
+        resolve({ enabled, ready, linkMode: mode, port: DIRECT_PORT });
+      });
     });
   });
 }

@@ -16,11 +16,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const searchResults = document.getElementById('searchResults');
   const linkStatus = document.getElementById('linkStatus');
   const proxyRoutingToggle = document.getElementById('proxyRoutingToggle');
-  const copyHostsCmdBtn = document.getElementById('copyHostsCmdBtn');
   const openTodayBtn = document.getElementById('openTodayBtn');
   const openChartsBtn = document.getElementById('openChartsBtn');
 
-  const HOSTS_COMMAND = 'curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.sh | bash';
+  const windows = /Windows/i.test(navigator.userAgent);
+  const macCommand = 'curl -fsSL https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.sh | bash';
+  const winCommand = 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/stellanjiang/app-store-region-switcher/main/install.ps1 | iex"';
+  document.getElementById('macCommand').textContent = macCommand;
+  document.getElementById('winCommand').textContent = winCommand;
+  document.getElementById('macCmdLabel').textContent = windows ? 'Mac' : '这台 Mac';
+  document.getElementById('winCmdLabel').textContent = windows ? '这台 Windows' : 'Windows';
 
   let activeTab = null;
   let activeUrl = null;
@@ -197,7 +202,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function renderLink(enabled) {
     proxyRoutingToggle.checked = !!enabled;
-    document.getElementById('linkHelp').classList.toggle('hidden', forwarderReady);
     if (forwarderReady && enabled) {
       linkStatus.textContent = '已在后台运行。打开官网即可切换地区，其它网站不变。';
       return;
@@ -245,13 +249,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  copyHostsCmdBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(HOSTS_COMMAND).then(() => {
-      copyHostsCmdBtn.textContent = '已复制';
+  function copyCommand(button, command) {
+    navigator.clipboard.writeText(command).then(() => {
+      const previous = button.textContent;
+      button.textContent = '已复制';
       setTimeout(() => {
-        copyHostsCmdBtn.textContent = '复制命令';
+        button.textContent = previous;
       }, 1500);
     });
+  }
+
+  document.getElementById('copyMacCmdBtn').addEventListener('click', () => {
+    copyCommand(document.getElementById('copyMacCmdBtn'), macCommand);
+  });
+  document.getElementById('copyWinCmdBtn').addEventListener('click', () => {
+    copyCommand(document.getElementById('copyWinCmdBtn'), winCommand);
   });
 
   openTodayBtn.addEventListener('click', () => {

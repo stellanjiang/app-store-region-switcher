@@ -408,6 +408,16 @@ input:checked + .slider:before {
   margin-bottom: 4px;
 }
 
+.device-cmd + .device-cmd {
+  margin-top: 8px;
+}
+
+.device-label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
 .hosts-code-row {
   display: flex;
   align-items: center;
