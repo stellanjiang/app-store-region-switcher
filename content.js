@@ -36,28 +36,14 @@
   }
 
   function currentCountry() {
+    if (typeof pageCountry === 'function') return pageCountry(location.pathname) || 'cn';
     const parts = location.pathname.split('/').filter(Boolean);
     if (parts.length > 0 && /^[a-z]{2}$/i.test(parts[0])) return parts[0].toLowerCase();
     return 'cn';
   }
 
-  function buildRegionUrl(code) {
-    const url = new URL(location.href);
-    const parts = url.pathname.split('/').filter(Boolean);
-    const idMatch = url.pathname.match(/\/id(\d+)/i);
-    if (idMatch) {
-      return `https://apps.apple.com/${code}/app/id${idMatch[1]}${url.search}${url.hash}`;
-    }
-    if (parts.length > 0 && /^[a-z]{2}$/i.test(parts[0])) {
-      parts[0] = code;
-      return `https://apps.apple.com/${parts.join('/')}${url.search}${url.hash}`;
-    }
-    const path = url.pathname === '/' ? '' : url.pathname;
-    return `https://apps.apple.com/${code}${path}${url.search}${url.hash}`;
-  }
-
   function go(code) {
-    const next = buildRegionUrl(code);
+    const next = buildStoreUrl(location.href, code);
     if (next === location.href) return;
     location.assign(next);
   }
@@ -94,7 +80,7 @@
     <button id="asr-pill-btn" type="button">
       <span>${region.flag}</span>
       <span>${region.code.toUpperCase()}</span>
-      <span>真实商店</span>
+      <span>${region.name}</span>
     </button>
   `;
   document.documentElement.appendChild(root);

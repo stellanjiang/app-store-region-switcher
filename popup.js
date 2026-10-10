@@ -1,35 +1,31 @@
-/**
- * App Store Region Switcher - Popup Controller v2.1
- */
-
 document.addEventListener('DOMContentLoaded', async () => {
   const regions = (typeof APP_STORE_REGIONS !== 'undefined') ? APP_STORE_REGIONS : [];
-  const popularCodes = (typeof APP_STORE_POPULAR_CODES !== 'undefined') ? APP_STORE_POPULAR_CODES : ['us', 'cn', 'hk', 'tw', 'jp', 'kr', 'gb', 'sg'];
+  const popularCodes = (typeof APP_STORE_POPULAR_CODES !== 'undefined')
+    ? APP_STORE_POPULAR_CODES
+    : ['us', 'cn', 'hk', 'tw', 'jp', 'kr', 'gb', 'sg'];
 
   const currentRegionBadge = document.getElementById('currentRegionBadge');
   const tabInfo = document.getElementById('tabInfo');
   const popupQuickChips = document.getElementById('popupQuickChips');
   const popupAllRegionsSelect = document.getElementById('popupAllRegionsSelect');
   const popupSwitchTabBtn = document.getElementById('popupSwitchTabBtn');
-
   const searchRegionSelect = document.getElementById('searchRegionSelect');
   const searchAppInput = document.getElementById('searchAppInput');
   const searchAppBtn = document.getElementById('searchAppBtn');
   const searchLoading = document.getElementById('searchLoading');
   const searchResults = document.getElementById('searchResults');
-
+  const linkStatus = document.getElementById('linkStatus');
   const proxyRoutingToggle = document.getElementById('proxyRoutingToggle');
-  const proxyPortRow = document.getElementById('proxyPortRow');
-  const proxyPortInput = document.getElementById('proxyPortInput');
-  const saveProxyPortBtn = document.getElementById('saveProxyPortBtn');
   const copyHostsCmdBtn = document.getElementById('copyHostsCmdBtn');
-
-  const openExploreCenterBtn = document.getElementById('openExploreCenterBtn');
+  const openTodayBtn = document.getElementById('openTodayBtn');
   const openChartsBtn = document.getElementById('openChartsBtn');
+
+  const HOSTS_COMMAND = `sudo sh -c 'grep -q "[[:space:]]apps.apple.com" /etc/hosts || echo "151.101.3.6 apps.apple.com" >> /etc/hosts'`;
 
   let activeTab = null;
   let activeUrl = null;
-  let currentTabInfo = { isAppStore: false, country: 'cn', appId: null };
+  let forwarderReady = false;
+  let currentTabInfo = { isAppStore: false, country: '', appId: '' };
 
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -39,14 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeUrl = new URL(activeTab.url);
         if (activeUrl.hostname === 'apps.apple.com') {
           currentTabInfo.isAppStore = true;
-          const parts = activeUrl.pathname.split('/').filter(Boolean);
-          if (parts.length > 0 && /^[a-zA-Z]{2}$/.test(parts[0])) {
-            currentTabInfo.country = parts[0].toLowerCase();
-          }
-          const idMatch = activeUrl.pathname.match(/\/id(\d+)/i);
-          if (idMatch) {
-            currentTabInfo.appId = idMatch[1];
-          }
+          currentTabInfo.country = pageCountry(activeUrl.pathname);
+          currentTabInfo.appId = appIdFromPath(activeUrl.pathname);
         }
       }
     }
@@ -55,219 +45,222 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getRegion(code) {
-    if (!code) return { code: '??', name: '未知地区', en: 'Unknown', flag: '🌐' };
-    const found = regions.find(r => r.code.toLowerCase() === code.toLowerCase());
-    return found || { code: code.toUpperCase(), name: code.toUpperCase(), en: code.toUpperCase(), flag: '🌐' };
+    if (typeof getAppStoreRegion === 'function') return getAppStoreRegion(code);
+    return regions.find((item) => item.code === code) || { code, name: String(code || '').toUpperCase(), flag: '🌐' };
   }
 
-  // 下拉填充
-  regions.forEach(r => {
-    const optSearch = document.createElement('option');
-    optSearch.value = r.code;
-    optSearch.textContent = `${r.flag} ${r.code.toUpperCase()}`;
-    searchRegionSelect.appendChild(optSearch);
-
-    const optAll = document.createElement('option');
-    optAll.value = r.code;
-    optAll.textContent = `${r.flag} ${r.name} (${r.code.toUpperCase()})`;
-    popupAllRegionsSelect.appendChild(optAll);
-  });
-
-  searchRegionSelect.value = 'us';
-
-  // 渲染当前页状态
-  if (currentTabInfo.isAppStore) {
-    const reg = getRegion(currentTabInfo.country);
-    currentRegionBadge.textContent = `${reg.flag} ${reg.code.toUpperCase()} · ${reg.name}`;
-
-    if (currentTabInfo.appId) {
-      tabInfo.textContent = `检测到 App ID: ${currentTabInfo.appId} (${activeTab.title || 'App 页面'})`;
-    } else {
-      tabInfo.textContent = `当前处于 App Store 列表或首页 (可在当前页调起探索中心)`;
-    }
-
-    popupQuickChips.innerHTML = '';
-    popularCodes.forEach(code => {
-      const r = getRegion(code);
-      const btn = document.createElement('button');
-      btn.className = `chip-btn ${currentTabInfo.country === r.code ? 'active' : ''}`;
-      btn.innerHTML = `<span>${r.flag}</span><span>${r.code.toUpperCase()}</span>`;
-      btn.title = `以 ${r.name} 真实商店查看`;
-      btn.addEventListener('click', () => switchTabToRegion(r.code));
-      popupQuickChips.appendChild(btn);
-    });
-
-    popupSwitchTabBtn.addEventListener('click', () => {
-      if (popupAllRegionsSelect.value) {
-        switchTabToRegion(popupAllRegionsSelect.value);
-      }
-    });
-  } else {
-    currentRegionBadge.textContent = '非 App Store';
-    tabInfo.textContent = '当前不在 App Store 网页。您可在上方跨区搜索 App，或打开探索中心。';
-
-    popupQuickChips.innerHTML = '';
-    popularCodes.forEach(code => {
-      const r = getRegion(code);
-      const btn = document.createElement('button');
-      btn.className = 'chip-btn';
-      btn.innerHTML = `<span>${r.flag}</span><span>${r.code.toUpperCase()}</span>`;
-      btn.title = `打开 ${r.name} 探索中心`;
-      btn.addEventListener('click', () => {
-        chrome.tabs.create({ url: `https://apps.apple.com/${r.code}` });
-      });
-      popupQuickChips.appendChild(btn);
-    });
-
-    popupSwitchTabBtn.textContent = '打开所选商店';
-    popupSwitchTabBtn.addEventListener('click', () => {
-      const code = popupAllRegionsSelect.value || 'us';
-      chrome.tabs.create({ url: `https://apps.apple.com/${code}` });
-    });
+  function selectedCode() {
+    return (popupAllRegionsSelect.value || searchRegionSelect.value || currentTabInfo.country || 'us').toLowerCase();
   }
 
-  // 切换目标地区
-  function realStoreUrl(code) {
-    if (!activeUrl || !currentTabInfo.isAppStore) {
-      return `https://apps.apple.com/${code}/iphone/today`;
-    }
-    if (currentTabInfo.appId) {
-      return `https://apps.apple.com/${code}/app/id${currentTabInfo.appId}`;
-    }
-    const parts = activeUrl.pathname.split('/').filter(Boolean);
-    if (parts.length > 0 && /^[a-zA-Z]{2}$/.test(parts[0])) {
-      parts[0] = code;
-      return `https://apps.apple.com/${parts.join('/')}${activeUrl.search}${activeUrl.hash}`;
-    }
-    return `https://apps.apple.com/${code}${activeUrl.pathname}${activeUrl.search}${activeUrl.hash}`;
-  }
-
-  function switchTabToRegion(targetCode) {
-    const code = targetCode.toLowerCase();
-    const targetUrl = realStoreUrl(code);
-    if (currentTabInfo.isAppStore && activeTab) {
-      chrome.tabs.update(activeTab.id, { url: targetUrl });
-    } else {
-      chrome.tabs.create({ url: targetUrl });
-    }
+  function openStore(url) {
+    if (typeof chrome === 'undefined' || !chrome.tabs) return;
+    if (activeTab) chrome.tabs.update(activeTab.id, { url });
+    else chrome.tabs.create({ url });
     window.close();
   }
 
-  // 跨区实时搜索 App
+  regions.forEach((region) => {
+    const searchOption = document.createElement('option');
+    searchOption.value = region.code;
+    searchOption.textContent = `${region.flag} ${region.code.toUpperCase()}`;
+    searchRegionSelect.appendChild(searchOption);
+
+    const allOption = document.createElement('option');
+    allOption.value = region.code;
+    allOption.textContent = `${region.flag} ${region.name}`;
+    popupAllRegionsSelect.appendChild(allOption);
+  });
+
+  const initialCode = currentTabInfo.country || 'us';
+  searchRegionSelect.value = initialCode;
+  popupAllRegionsSelect.value = initialCode;
+
+  function renderCurrentPage() {
+    if (currentTabInfo.isAppStore) {
+      const region = getRegion(currentTabInfo.country || 'us');
+      currentRegionBadge.textContent = currentTabInfo.country
+        ? `${region.flag} ${region.code.toUpperCase()} · ${region.name}`
+        : '未识别地区';
+      tabInfo.textContent = currentTabInfo.appId
+        ? `这个 App：id${currentTabInfo.appId}`
+        : '当前是列表或首页，切换后仍留在同类页面。';
+      popupSwitchTabBtn.textContent = '切换';
+      return;
+    }
+    currentRegionBadge.textContent = '非 App Store';
+    tabInfo.textContent = '当前不在苹果官网。选择地区后会打开该区页面。';
+    popupSwitchTabBtn.textContent = '打开';
+  }
+
+  function renderChips() {
+    popupQuickChips.replaceChildren();
+    popularCodes.forEach((code) => {
+      const region = getRegion(code);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `chip-btn${currentTabInfo.country === code ? ' active' : ''}`;
+      button.innerHTML = `<span>${region.flag}</span><span>${region.code.toUpperCase()}</span>`;
+      button.title = region.name;
+      button.addEventListener('click', () => {
+        searchRegionSelect.value = code;
+        popupAllRegionsSelect.value = code;
+        openStore(targetUrl(code));
+      });
+      popupQuickChips.appendChild(button);
+    });
+  }
+
+  function targetUrl(code) {
+    if (currentTabInfo.isAppStore && activeUrl) return buildStoreUrl(activeUrl.href, code);
+    return storePage(code, 'iphone/today');
+  }
+
+  renderCurrentPage();
+  renderChips();
+
+  popupSwitchTabBtn.addEventListener('click', () => {
+    const code = selectedCode();
+    searchRegionSelect.value = code;
+    openStore(targetUrl(code));
+  });
+
+  popupAllRegionsSelect.addEventListener('change', () => {
+    if (popupAllRegionsSelect.value) searchRegionSelect.value = popupAllRegionsSelect.value;
+  });
+
+  searchRegionSelect.addEventListener('change', () => {
+    popupAllRegionsSelect.value = searchRegionSelect.value;
+  });
+
   async function searchAppStore() {
     const query = searchAppInput.value.trim();
     const region = searchRegionSelect.value || 'us';
-
     if (!query) return;
 
     searchLoading.classList.remove('hidden');
     searchResults.classList.add('hidden');
-    searchResults.innerHTML = '';
+    searchResults.replaceChildren();
 
     try {
       const isPureId = /^\d+$/.test(query);
       const apiUrl = isPureId
         ? `https://itunes.apple.com/lookup?id=${encodeURIComponent(query)}&country=${region}`
         : `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=${region}&entity=software&limit=6`;
-
       const response = await fetch(apiUrl);
       const data = await response.json();
-
       searchLoading.classList.add('hidden');
       searchResults.classList.remove('hidden');
 
       if (!data.results || data.results.length === 0) {
-        searchResults.innerHTML = `<div class="search-loading">在 ${region.toUpperCase()} 商店中未检索到相关 App</div>`;
+        searchResults.textContent = `在 ${region.toUpperCase()} 商店中没有找到`;
         return;
       }
 
-      data.results.forEach(app => {
+      data.results.forEach((app) => {
         const item = document.createElement('div');
         item.className = 'search-result-item';
-        item.innerHTML = `
-          <img class="app-icon" src="${app.artworkUrl60 || ''}" alt="icon" />
-          <div class="app-meta">
-            <div class="app-name" title="${app.trackName}">${app.trackName}</div>
-            <div class="app-sub">${app.artistName || ''} · ${app.formattedPrice || '免费'} · ⭐ ${app.averageUserRating ? app.averageUserRating.toFixed(1) : '-'}</div>
-          </div>
-          <span class="app-open-badge">查看 ↗</span>
-        `;
+        const icon = document.createElement('img');
+        icon.className = 'app-icon';
+        icon.alt = '';
+        if (typeof app.artworkUrl60 === 'string' && app.artworkUrl60.startsWith('https://')) icon.src = app.artworkUrl60;
+        const meta = document.createElement('div');
+        meta.className = 'app-meta';
+        const name = document.createElement('div');
+        name.className = 'app-name';
+        name.textContent = app.trackName || 'App';
+        const sub = document.createElement('div');
+        sub.className = 'app-sub';
+        const rating = app.averageUserRating ? app.averageUserRating.toFixed(1) : '-';
+        sub.textContent = `${app.artistName || ''} · ${app.formattedPrice || '免费'} · ⭐ ${rating}`;
+        meta.append(name, sub);
+        const badge = document.createElement('span');
+        badge.className = 'app-open-badge';
+        badge.textContent = '查看';
+        item.append(icon, meta, badge);
         item.addEventListener('click', () => {
-          const appUrl = `https://apps.apple.com/${region}/app/id${app.trackId}`;
-          if (currentTabInfo.isAppStore && activeTab) {
-            chrome.tabs.update(activeTab.id, { url: appUrl });
-          } else {
-            chrome.tabs.create({ url: appUrl });
-          }
-          window.close();
+          openStore(`https://apps.apple.com/${region}/app/id${app.trackId}`);
         });
         searchResults.appendChild(item);
       });
     } catch (err) {
       searchLoading.classList.add('hidden');
       searchResults.classList.remove('hidden');
-      searchResults.innerHTML = `<div class="search-loading">检索请求异常，请检查网络连接</div>`;
+      searchResults.textContent = '检索失败，请检查网络';
     }
   }
 
   searchAppBtn.addEventListener('click', searchAppStore);
-  searchAppInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') searchAppStore();
+  searchAppInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') searchAppStore();
   });
 
-  // 读取并设置代理分流状态
-  chrome.runtime.sendMessage({ action: 'GET_PROXY_STATUS' }, (res) => {
-    if (res) {
-      proxyRoutingToggle.checked = !!res.enabled;
-      proxyPortInput.value = res.port || 17890;
-      if (res.enabled) {
-        proxyPortRow.classList.remove('hidden');
+  function renderLink(enabled) {
+    proxyRoutingToggle.checked = !!enabled;
+    if (forwarderReady && enabled) {
+      linkStatus.textContent = '本机转发已连接。Chrome 只把 apps.apple.com 交给它，其它网站不变。';
+      return;
+    }
+    if (forwarderReady) {
+      linkStatus.textContent = '本机转发已在运行。打开开关后，Chrome 会用它打开苹果官网。';
+      return;
+    }
+    if (enabled) {
+      linkStatus.textContent = '开关开着，但 127.0.0.1:17890 没有响应。请先运行 node direct-proxy.mjs，或先关掉开关。';
+      return;
+    }
+    linkStatus.textContent = '直接打开官网即可。如果外区页面被送回中国区，再用下面的办法。';
+  }
+
+  async function probeForwarder() {
+    try {
+      const response = await fetch('http://127.0.0.1:17890/health', { cache: 'no-store' });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return !!data.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  forwarderReady = await probeForwarder();
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage({ action: 'GET_PROXY_STATUS' }, (res) => {
+      renderLink(!!(res && res.enabled));
+    });
+  } else {
+    renderLink(false);
+  }
+
+  proxyRoutingToggle.addEventListener('change', async () => {
+    if (proxyRoutingToggle.checked) {
+      forwarderReady = await probeForwarder();
+      if (!forwarderReady) {
+        proxyRoutingToggle.checked = false;
+        renderLink(false);
+        return;
       }
     }
-  });
-
-  proxyRoutingToggle.addEventListener('change', () => {
-    const isChecked = proxyRoutingToggle.checked;
-    proxyPortRow.classList.toggle('hidden', !isChecked);
-    const port = parseInt(proxyPortInput.value, 10) || 17890;
     chrome.runtime.sendMessage({
       action: 'SET_PROXY_STATUS',
-      enabled: isChecked,
-      port: port
-    });
+      enabled: proxyRoutingToggle.checked
+    }, () => renderLink(proxyRoutingToggle.checked));
   });
 
-  saveProxyPortBtn.addEventListener('click', () => {
-    const port = parseInt(proxyPortInput.value, 10) || 17890;
-    chrome.runtime.sendMessage({
-      action: 'SET_PROXY_STATUS',
-      enabled: proxyRoutingToggle.checked,
-      port: port
-    }, () => {
-      saveProxyPortBtn.textContent = '已保存';
-      setTimeout(() => saveProxyPortBtn.textContent = '保存', 1500);
-    });
-  });
-
-  // 复制 Hosts 命令
   copyHostsCmdBtn.addEventListener('click', () => {
-    const cmd = `sudo sh -c 'echo "151.101.3.6 apps.apple.com" >> /etc/hosts'`;
-    navigator.clipboard.writeText(cmd).then(() => {
-      copyHostsCmdBtn.textContent = '✓ 已复制';
-      setTimeout(() => copyHostsCmdBtn.textContent = '复制命令', 1500);
+    navigator.clipboard.writeText(HOSTS_COMMAND).then(() => {
+      copyHostsCmdBtn.textContent = '已复制';
+      setTimeout(() => {
+        copyHostsCmdBtn.textContent = '复制命令';
+      }, 1500);
     });
   });
 
-  // 快速切换到美区官方页面
-  openExploreCenterBtn.addEventListener('click', () => {
-    const url = 'https://apps.apple.com/us/iphone/today';
-    if (activeTab) chrome.tabs.update(activeTab.id, { url });
-    else chrome.tabs.create({ url });
-    window.close();
+  openTodayBtn.addEventListener('click', () => {
+    openStore(storePage(searchRegionSelect.value || 'us', 'iphone/today'));
   });
 
   openChartsBtn.addEventListener('click', () => {
-    const code = searchRegionSelect.value || 'us';
-    chrome.tabs.create({ url: `https://apps.apple.com/${code}/charts/iphone` });
+    openStore(storePage(searchRegionSelect.value || 'us', 'charts/iphone'));
   });
 });

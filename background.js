@@ -3,17 +3,10 @@
  * 其它网站保持直连，系统 IP 不变。页面仍是苹果官网。
  */
 
-const DIRECT_PORT = 17890;
+importScripts('regions.js', 'storefront.js');
 
-const POPULAR_MENU_REGIONS = [
-  { code: 'us', name: '美国', flag: '🇺🇸' },
-  { code: 'cn', name: '中国大陆', flag: '🇨🇳' },
-  { code: 'hk', name: '中国香港', flag: '🇭🇰' },
-  { code: 'tw', name: '中国台湾', flag: '🇹🇼' },
-  { code: 'jp', name: '日本', flag: '🇯🇵' },
-  { code: 'kr', name: '韩国', flag: '🇰🇷' },
-  { code: 'gb', name: '英国', flag: '🇬🇧' }
-];
+const DIRECT_PORT = 17890;
+const MENU_CODES = ['us', 'cn', 'hk', 'tw', 'jp', 'kr', 'gb'];
 
 function applyDirectProxy(enabled) {
   if (!chrome.proxy) return;
@@ -42,16 +35,17 @@ function applyDirectProxy(enabled) {
 
 function syncProxySetting() {
   chrome.storage.sync.get(['directProxyVersion', 'proxyRoutingEnabled'], (res) => {
-    if (res.directProxyVersion !== 3) {
+    const fresh = res.directProxyVersion == null;
+    const enabled = fresh ? false : res.proxyRoutingEnabled === true;
+    if (res.directProxyVersion !== 4) {
       chrome.storage.sync.set({
-        directProxyVersion: 3,
-        proxyRoutingEnabled: true,
-        proxyPort: DIRECT_PORT,
-        preferredRegion: 'us'
-      }, () => applyDirectProxy(true));
+        directProxyVersion: 4,
+        proxyRoutingEnabled: enabled,
+        proxyPort: DIRECT_PORT
+      }, () => applyDirectProxy(enabled));
       return;
     }
-    applyDirectProxy(res.proxyRoutingEnabled !== false);
+    applyDirectProxy(enabled);
   });
 }
 
@@ -64,7 +58,8 @@ function setupContextMenus() {
       targetUrlPatterns: ['*://apps.apple.com/*']
     });
 
-    POPULAR_MENU_REGIONS.forEach((region) => {
+    MENU_CODES.forEach((code) => {
+      const region = getAppStoreRegion(code);
       chrome.contextMenus.create({
         id: `asr_open_link_${region.code}`,
         parentId: 'asr_parent_link',
@@ -76,15 +71,7 @@ function setupContextMenus() {
 }
 
 function regionUrl(linkUrl, code) {
-  const url = new URL(linkUrl);
-  const idMatch = url.pathname.match(/\/id(\d+)/i);
-  if (idMatch) return `https://apps.apple.com/${code}/app/id${idMatch[1]}`;
-  const parts = url.pathname.split('/').filter(Boolean);
-  if (parts.length > 0 && /^[a-z]{2}$/i.test(parts[0])) {
-    parts[0] = code;
-    return `https://apps.apple.com/${parts.join('/')}${url.search}${url.hash}`;
-  }
-  return `https://apps.apple.com/${code}${url.pathname}${url.search}${url.hash}`;
+  return buildStoreUrl(linkUrl, code);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -102,7 +89,7 @@ setupContextMenus();
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes.proxyRoutingEnabled) {
-    applyDirectProxy(changes.proxyRoutingEnabled.newValue !== false);
+    applyDirectProxy(changes.proxyRoutingEnabled.newValue === true);
   }
 });
 
@@ -110,7 +97,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'GET_PROXY_STATUS') {
     chrome.storage.sync.get(['proxyRoutingEnabled'], (res) => {
       sendResponse({
-        enabled: res.proxyRoutingEnabled !== false,
+        enabled: res.proxyRoutingEnabled === true,
         port: DIRECT_PORT
       });
     });
@@ -118,7 +105,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
   if (request.action === 'SET_PROXY_STATUS') {
     chrome.storage.sync.set({
-      directProxyVersion: 3,
+      directProxyVersion: 4,
       proxyRoutingEnabled: !!request.enabled,
       proxyPort: DIRECT_PORT
     }, () => {

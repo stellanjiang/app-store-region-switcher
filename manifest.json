@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "App Store 网页版地区切换助手",
   "short_name": "AppStoreRegion",
-  "version": "3.1.0",
-  "description": "在浏览器里打开真正的 apps.apple.com，并切换美区、日区、港区等商店。只改这个网站的线路，不改电脑 IP。",
+  "version": "3.2.0",
+  "description": "在真实的 apps.apple.com 上切换商店地区。",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -31,7 +31,8 @@
   ],
   "host_permissions": [
     "*://apps.apple.com/*",
-    "https://itunes.apple.com/*"
+    "https://itunes.apple.com/*",
+    "http://127.0.0.1:17890/*"
   ],
   "content_scripts": [
     {
@@ -40,20 +41,10 @@
       ],
       "js": [
         "regions.js",
+        "storefront.js",
         "content.js"
       ],
       "run_at": "document_end"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "content.css",
-        "icons/*"
-      ],
-      "matches": [
-        "*://apps.apple.com/*"
-      ]
     }
   ],
   "commands": {

@@ -2,7 +2,7 @@
 // @name         App Store Region Switcher
 // @namespace    https://github.com/appstore-region-switcher
 // @version      3.1.0
-// @description  在真实的 apps.apple.com 上切换商店地区。只改网址中的国家代码。
+// @description  在真实的 apps.apple.com 上切换商店地区。网址规则与扩展里的 storefront.js 相同。
 // @match        https://apps.apple.com/*
 // @run-at       document-end
 // @grant        none
@@ -37,15 +37,16 @@
 
   function buildRegionUrl(code) {
     const url = new URL(location.href);
-    const parts = url.pathname.split('/').filter(Boolean);
+    const country = String(code || 'us').toLowerCase();
     const idMatch = url.pathname.match(/\/id(\d+)/i);
-    if (idMatch) return `https://apps.apple.com/${code}/app/id${idMatch[1]}${url.search}${url.hash}`;
+    if (idMatch) return `https://apps.apple.com/${country}/app/id${idMatch[1]}${url.search}${url.hash}`;
+    const parts = url.pathname.split('/').filter(Boolean);
     if (parts.length > 0 && /^[a-z]{2}$/i.test(parts[0])) {
-      parts[0] = code;
+      parts[0] = country;
       return `https://apps.apple.com/${parts.join('/')}${url.search}${url.hash}`;
     }
     const path = url.pathname === '/' ? '' : url.pathname;
-    return `https://apps.apple.com/${code}${path}${url.search}${url.hash}`;
+    return `https://apps.apple.com/${country}${path}${url.search}${url.hash}`;
   }
 
   const country = currentCountry();
